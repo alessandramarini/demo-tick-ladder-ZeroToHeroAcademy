@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Ottimizzazioni per Web Apps (Vercel, GitHub, Telegram, iOS, Android) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffb200">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>ZERO TO HERO ACADEMY</title>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Tema Chiaro Stile Betfair Originale */
+        :root {
+            --bf-yellow: #ffb200;
+            --bf-bg: #f3f4f6;
+            --bf-panel: #ffffff;
+            --bf-back: #1e9cea;
+            --bf-back-light: #e2f2fc;
+            --bf-lay: #e9a3b5;
+            --bf-lay-light: #fcecf0;
+            --bf-text: #1f2937;
+            --bf-border: #d1d5db;
+        }
+
+        /* Blocco comportamenti nativi fastidiosi su Mobile/Telegram */
+        html, body { 
+            background-color: var(--bf-bg); 
+            color: var(--bf-text); 
+            font-family: Arial, -apple-system, BlinkMacSystemFont, Helvetica, sans-serif; 
+            user-select: none; 
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            overscroll-behavior-y: none; /* Impedisce il pull-to-refresh */
+        }
+        
+        .ladder-row { display: grid; grid-template-columns: 45px 1fr 60px 1fr; border-bottom: 1px solid #e5e7eb; height: 48px; align-items: center; background-color: #fff; }
+        .cell { text-align: center; font-weight: 600; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: background-color 0.1s ease; position: relative;}
+        
+        .bg-back-inactive { background-color: var(--bf-back-light); color: #0284c7; }
+        .bg-lay-inactive { background-color: var(--bf-lay-light); color: #be123c; }
+        .bg-price { background-color: #f8fafc; color: #0f172a; font-size: 1.15rem; font-weight: 700; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }
+        .bg-empty { background-color: transparent; }
+        
+        .active-price-back { background-color: var(--bf-back) !important; color: #fff !important; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);}
+        .active-price-back:active { background-color: #1480c5 !important; }
+        
+        .active-price-lay { background-color: var(--bf-lay) !important; color: #fff !important; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);}
+        .active-price-lay:active { background-color: #c98596 !important; }
+
+        .position-marker { width: 90%; height: 80%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; font-weight: bold; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);}
+        .back-pos { background-color: #0284c7; }
+        .lay-pos { background-color: #be123c; }
+        .pos-type { font-size: 0.65rem; line-height: 1; }
+        .pos-stake { font-size: 0.6rem; opacity: 0.9; }
+
+        .vol-text { font-size: 0.6rem; font-weight: 500; opacity: 0.8; margin-top: -2px; }
+        .disabled-cell { cursor: not-allowed; opacity: 0.3; }
+
+        .flag-btn { transition: transform 0.2s; cursor: pointer; filter: grayscale(60%) opacity(0.6); }
+        .flag-btn:hover { transform: scale(1.1); filter: grayscale(0%) opacity(1); }
+        .flag-btn.active { filter: grayscale(0%) opacity(1); border-bottom: 2px solid #000; transform: scale(1.1); }
+
+        .header-bf { background-color: var(--bf-yellow); color: #000; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .panel-bf { background-color: var(--bf-panel); border: 1px solid var(--bf-border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        
+        .edu-card { border-radius: 6px; padding: 12px; margin-bottom: 12px; border: 1px solid; }
+        .edu-card-back { background-color: #f0f9ff; border-color: #bae6fd; }
+        .edu-card-lay { background-color: #fff1f2; border-color: #fecdd3; }
+        .edu-card-neutral { background-color: #f8fafc; border-color: #e2e8f0; }
+
+        @keyframes slideInUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast { animation: slideInUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        ::-webkit-scrollbar { width: 0px; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen pb-10 md:pb-6">
+
+    <!-- HEADER -->
+    <header class="header-bf px-4 py-3 flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-2">
+            <img src="logo-tondo.jpeg" alt="Logo" class="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gray-800 shadow-sm object-cover bg-white" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzMzMyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0tMi00bDctNy0xLjQxLTEuNDFMNTEwbC0yLjU5IDIuNThMMTggMTZ6Ii8+PC9zdmc+'">
+            <h1 class="text-base md:text-xl font-black tracking-tighter text-gray-900" id="app-title">ZERO TO HERO ACADEMY</h1>
+        </div>
+        <div class="flex gap-2 items-center">
+            <img src="https://flagcdn.com/w40/gb.png" class="flag-btn active w-6 h-4 md:w-7 md:h-5 rounded-sm object-cover shadow" onclick="setLang('en')" id="flag-en" alt="English">
+            <img src="https://flagcdn.com/w40/es.png" class="flag-btn w-6 h-4 md:w-7 md:h-5 rounded-sm object-cover shadow" onclick="setLang('es')" id="flag-es" alt="Español">
+            <img src="https://flagcdn.com/w40/pt.png" class="flag-btn w-6 h-4 md:w-7 md:h-5 rounded-sm object-cover shadow" onclick="setLang('pt')" id="flag-pt" alt="Português">
+            <img src="https://flagcdn.com/w40/it.png" class="flag-btn w-6 h-4 md:w-7 md:h-5 rounded-sm object-cover shadow" onclick="setLang('it')" id="flag-it" alt="Italiano">
+        </div>
+    </header>
+
+    <div class="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-4 lg:gap-8 p-3 md:p-6 mt-1 md:mt-2">
+        
+        <!-- COLONNA MERCATO E LADDER -->
+        <div class="flex-1 w-full max-w-lg mx-auto flex flex-col">
+            
+            <div class="panel-bf p-3 rounded-t-lg mb-px relative flex flex-col gap-3 z-20">
+                <!-- Top Dashboard -->
+                <div class="flex justify-between items-start">
+                    <div class="flex flex-col items-start w-1/3">
+                        <span class="text-[9px] md:text-[10px] text-gray-500 uppercase font-bold tracking-widest leading-none mb-1" id="lbl-balance">Avail. Balance</span>
+                        <span id="balance" class="text-xl md:text-2xl font-black text-gray-900 tracking-tight">100.00€</span>
+                    </div>
+                    
+                    <div class="flex flex-col items-center bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200 w-1/3 mx-1">
+                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest leading-none mb-1" id="lbl-status">Status</span>
+                        <span id="pos-info" class="text-[11px] md:text-xs font-bold text-gray-800 text-center leading-tight">No order</span>
+                        <span id="liab-info" class="text-[9px] text-red-600 hidden mt-0.5 font-bold">Liab: 0.00€</span>
+                    </div>
+
+                    <div class="flex flex-col items-center bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-200 w-1/3">
+                        <span class="text-[9px] text-blue-600 uppercase font-bold tracking-widest leading-none mb-1 text-center" id="lbl-match">Market U2.5</span>
+                        <span class="text-[11px] md:text-xs font-bold text-blue-900 text-center"><span id="match-time">0</span>' | <span id="match-goals">0</span> <span id="lbl-goal">Goal</span></span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-end border-t border-gray-100 pt-2">
+                    <div class="flex flex-col w-2/3 pr-2">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest" id="lbl-stake-title">Stake</span>
+                            <span id="lbl-current-stake" class="text-[10px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 shadow-sm">€ 1.00</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="setStake(0.01)" id="btn-stake-1" class="flex-1 py-1.5 rounded shadow-sm transition-all active:scale-95 cursor-pointer flex justify-center items-center text-[11px] font-bold"></button>
+                            <button onclick="setStake(0.02)" id="btn-stake-2" class="flex-1 py-1.5 rounded shadow-sm transition-all active:scale-95 cursor-pointer flex justify-center items-center text-[11px] font-bold"></button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col text-right w-1/3">
+                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-0.5" id="lbl-pnl">Open PnL</span>
+                        <span id="pnl-info" class="text-lg md:text-xl font-black text-gray-400 tracking-tight leading-none">0.00€</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Ladder -->
+            <div class="grid grid-cols-[45px_1fr_60px_1fr] bg-gray-100 border-x border-y border-gray-300 text-[9px] md:text-xs font-bold text-center uppercase z-10 relative">
+                <div class="p-2 text-gray-600 flex items-center justify-center" id="lbl-pos">Pos</div>
+                <div class="p-2 bg-[var(--bf-back)] text-white flex flex-col justify-center leading-tight">
+                    <span id="lbl-back" class="font-black">BACK</span>
+                    <span class="text-[7px] md:text-[8px] font-bold opacity-90" id="lbl-back-sub">(Buy)</span>
+                </div>
+                <div class="p-2 text-gray-700 flex items-center justify-center" id="lbl-odds">Odds</div>
+                <div class="p-2 bg-[var(--bf-lay)] text-white flex flex-col justify-center leading-tight">
+                    <span id="lbl-lay" class="font-black">LAY</span>
+                    <span class="text-[7px] md:text-[8px] font-bold opacity-90" id="lbl-lay-sub">(Sell)</span>
+                </div>
+            </div>
+
+            <div id="ladder-container" class="panel-bf border-t-0 rounded-b-lg overflow-hidden shadow-sm relative z-0 flex-1 min-h-[240px]">
+                <!-- Overlay Suspended -->
+                <div id="suspended-overlay" class="absolute inset-0 bg-red-900/90 z-20 hidden flex-col items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+                     <span class="text-3xl md:text-4xl mb-1">🔒</span>
+                     <span class="text-white font-black text-xl md:text-2xl tracking-widest" id="lbl-suspended">SUSPENDED</span>
+                     <span class="text-red-200 text-xs md:text-sm font-bold mt-1 text-center px-4" id="lbl-suspended-sub">Evaluating Goal...</span>
+                </div>
+                <!-- Rows container -->
+                <div id="ladder-rows"></div>
+            </div>
+            
+            <!-- Controlli Mercato -->
+            <div class="mt-3 flex justify-between items-center panel-bf p-2 md:p-3 rounded-lg shadow-sm">
+                <div class="flex gap-2 w-full justify-between">
+                    <button id="btn-pause" onclick="toggleMarket()" class="flex-1 py-2.5 md:py-3 bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-gray-900 text-[10px] md:text-xs font-bold rounded-lg transition-colors uppercase border border-yellow-600 shadow-sm flex justify-center items-center gap-1">
+                        <span>⏸</span> <span id="lbl-btn-pause">Pause</span>
+                    </button>
+                    <button onclick="changeSpeed()" class="flex-1 py-2.5 md:py-3 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 text-[10px] md:text-xs font-bold rounded-lg transition-colors uppercase border border-gray-300 shadow-sm flex justify-center items-center gap-1">
+                        <span>⚡</span> <span id="lbl-speed-pre" class="text-gray-500 hidden sm:inline">Speed:</span> <span id="lbl-speed-val" class="text-blue-600">Normal</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLONNA ACADEMY EDUCATIVA -->
+        <div class="flex-1 panel-bf p-4 md:p-5 rounded-lg flex flex-col h-fit lg:sticky lg:top-20 mt-4 lg:mt-0 shadow-sm">
+            
+            <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-3">
+                <span class="text-xl md:text-2xl">🎓</span>
+                <h2 class="text-base md:text-lg font-black text-gray-800 uppercase tracking-tight leading-tight" id="tut-title">Academy: Tick & Ladder</h2>
+            </div>
+            
+            <!-- NUOVA CARD INFO DEMO -->
+            <div class="edu-card edu-card-neutral border-yellow-400 bg-yellow-50 mb-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-yellow-800 font-bold text-[11px] md:text-xs uppercase tracking-wide" id="tut-demo-title">⏱️ Demo 90 Min. Accelerata</span>
+                </div>
+                <p class="text-[10px] md:text-[11px] text-yellow-900 leading-relaxed" id="tut-demo-desc">Simulazione di 90 min (Under 2.5). Le quote scendono col tempo. Se c'è un Gol, il mercato si sospende e le quote schizzano in alto! Lo stake si adatta in base alla tua cassa.</p>
+            </div>
+
+            <div class="edu-card edu-card-neutral border-blue-200">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-blue-800 font-bold text-xs md:text-sm uppercase tracking-wide" id="tut-ladder-title">🪜 Il Ladder (Scala)</span>
+                </div>
+                <p class="text-[11px] md:text-xs text-gray-700 leading-relaxed" id="tut-ladder-desc">Il <b>Ladder</b> ordina le quote in verticale. Permette ai trader di visualizzare la profondità del mercato e piazzare ordini fulminei sui prezzi migliori.</p>
+            </div>
+
+            <div class="edu-card edu-card-neutral border-dashed border-gray-300">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-gray-800 font-bold text-xs md:text-sm uppercase tracking-wide" id="tut-tick-title">📏 Il Tick</span>
+                </div>
+                <p class="text-[11px] md:text-xs text-gray-600 leading-relaxed" id="tut-tick-desc">Un <b>Tick</b> è lo spostamento minimo di una quota (es. da 2.50 a 2.52). Il tuo obiettivo è catturare Tick positivi. <br><i>Nota: Il mercato si sospende al verificarsi di un Goal!</i></p>
+            </div>
+
+            <div class="edu-card edu-card-back">
+                <h3 class="text-blue-700 font-black text-[11px] md:text-xs mb-1 uppercase flex items-center gap-1">
+                    🔵 <span id="tut-back-title">PUNTA (Compra)</span>
+                </h3>
+                <p class="text-[10px] md:text-[11px] text-blue-900 mb-0" id="tut-back-desc">Guadagni se la quota <b>SCENDE</b>. Es: Punti a 2.50, chiudi (Banchi) a 2.48 = <b>+1 Tick di profitto</b>.</p>
+            </div>
+
+            <div class="edu-card edu-card-lay">
+                <h3 class="text-rose-700 font-black text-[11px] md:text-xs mb-1 uppercase flex items-center gap-1">
+                    🔴 <span id="tut-lay-title">BANCA (Vendi)</span>
+                </h3>
+                <p class="text-[10px] md:text-[11px] text-rose-900 mb-0" id="tut-lay-desc">Guadagni se la quota <b>SALE</b>. Es: Banchi a 2.50, chiudi (Punti) a 2.52 = <b>+1 Tick di profitto</b>.</p>
+            </div>
+
+            <button onclick="resetGame()" class="mt-2 w-full py-3 md:py-4 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-lg transition-colors uppercase tracking-wide text-[11px] md:text-xs shadow-md flex justify-center items-center gap-2" id="btn-reset">
+                <span>🔄</span> <span id="lbl-btn-reset">Ricomincia Partita (Reset)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-2 md:top-auto md:bottom-6 left-1/2 transform -translate-x-1/2 md:translate-x-0 md:left-auto md:right-6 w-[95%] md:w-auto max-w-sm flex flex-col gap-2 z-50 pointer-events-none"></div>
+
+    <script>
+        // --- 1. DIZIONARIO MULTILINGUA (i18n) INTEGRALE ---
+        const i18n = {
+            en: {
+                appTitle: "ZERO TO HERO ACADEMY", lblBalance: "Avail. Balance", lblStatus: "Status", lblPnl: "Open PnL",
+                noOrder: "No order", lblPos: "Pos", lblBack: "BACK", lblBackSub: "(Buy)", lblOdds: "Odds", lblLay: "LAY", lblLaySub: "(Sell)",
+                btnPause: "Pause", btnResume: "Resume", lblSpeedPre: "Speed:", spdNormal: "Normal", spdFast: "Fast", spdSlow: "Slow",
+                lblStakeTitle: "Bankroll %", lblStake1: "1%", lblStake2: "2%", lblMatch: "Market U2.5", lblGoal: "Goal",
+                lblSuspended: "SUSPENDED", lblSuspendedSub: "Market paused due to a Goal...",
+                
+                tutTitle: "Academy: Tick & Ladder",
+                tutDemoTitle: "⏱️ 90-Min Accelerated Demo",
+                tutDemoDesc: "This is an accelerated 90-minute simulation of an Under 2.5 goals market. Odds drop over time. If a Goal is scored, the market suspends and odds spike up! Stake auto-adjusts based on your real-time balance.",
+                tutLadderTitle: "🪜 The Ladder",
+                tutLadderDesc: "The <b>Ladder</b> displays odds vertically. It allows traders to visualize market depth and place lightning-fast orders on the best available prices.",
+                tutTickTitle: "📏 The Tick",
+                tutTickDesc: "A <b>Tick</b> is the minimum movement of an odd (e.g. from 2.50 to 2.52). Your goal is to capture positive Ticks. <br><i>Note: The market suspends briefly on Goals!</i>",
+                tutBackTitle: "BACK (Buy)", tutBackDesc: "You win if the odds <b>DROP</b>. E.g., Back at 2.50, close (Lay) at 2.48 = <b>+1 Tick profit</b>.",
+                tutLayTitle: "LAY (Sell)", tutLayDesc: "You win if the odds <b>RISE</b>. E.g., Lay at 2.50, close (Back) at 2.52 = <b>+1 Tick profit</b>.",
+                btnReset: "Restart Match & Balance",
+                
+                toastBuy: "BACK Opened @", toastSell: "LAY Opened @", toastWarn: "Close current position first!", toastWin: "Trade Won!", toastLose: "Trade Lost", toastDraw: "Breakeven", toastPaused: "Market paused.", toastResumed: "Market resumed.", toastFunds: "Insufficient funds for liability!",
+                toastGoal: "⚽ GOAL! Market Suspended!", toastEnd: "🏁 Full Time!", strClickBack: "Click to Back", strClickLay: "Click to Lay", toastRestart: "Match & Balance Restarted!"
+            },
+            es: {
+                appTitle: "ZERO TO HERO ACADEMY", lblBalance: "Saldo Disponible", lblStatus: "Estado", lblPnl: "PnL Abierto",
+                noOrder: "Sin orden", lblPos: "Pos", lblBack: "FAVOR", lblBackSub: "(Comprar)", lblOdds: "Cuota", lblLay: "CONTRA", lblLaySub: "(Vender)",
+                btnPause: "Pausa", btnResume: "Reanudar", lblSpeedPre: "Velocidad:", spdNormal: "Normal", spdFast: "Rápida", spdSlow: "Lenta",
+                lblStakeTitle: "% de Saldo", lblStake1: "1%", lblStake2: "2%", lblMatch: "Mercado U2.5", lblGoal: "Gol",
+                lblSuspended: "SUSPENDIDO", lblSuspendedSub: "Mercado pausado por un Gol...",
+                
+                tutTitle: "Academy: Tick & Ladder",
+                tutDemoTitle: "⏱️ Demo 90 Min. Acelerada",
+                tutDemoDesc: "Simulación acelerada de 90 min (Under 2.5). Las cuotas bajan con el tiempo. Si hay un Gol, ¡el mercado se suspende y las cuotas suben! El stake se adapta a tu saldo en tiempo real.",
+                tutLadderTitle: "🪜 La Escalera (Ladder)",
+                tutLadderDesc: "La <b>Escalera</b> muestra las cuotas verticalmente. Permite ver la profundidad del mercado y operar muy rápido en los mejores precios.",
+                tutTickTitle: "📏 El Tick",
+                tutTickDesc: "Un <b>Tick</b> es el movimiento mínimo de una cuota (ej. de 2.50 a 2.52). Tu objetivo es capturar Ticks positivos. <br><i>Nota: ¡El mercado se suspende si hay un Gol!</i>",
+                tutBackTitle: "A FAVOR (Comprar)", tutBackDesc: "Ganas si la cuota <b>BAJA</b>. Ej: A Favor a 2.50, cierras (En Contra) a 2.48 = <b>+1 Tick de ganancia</b>.",
+                tutLayTitle: "EN CONTRA (Vender)", tutLayDesc: "Ganas si la cuota <b>SUBE</b>. Ej: En Contra a 2.50, cierras (A Favor) a 2.52 = <b>+1 Tick de ganancia</b>.",
+                btnReset: "Reiniciar Partido (Reset)",
+                
+                toastBuy: "A FAVOR Abierto @", toastSell: "EN CONTRA Abierto @", toastWarn: "¡Cierra la posición actual primero!", toastWin: "¡Trade Ganado!", toastLose: "Trade Perdido", toastDraw: "Sin ganancias", toastPaused: "Mercado pausado.", toastResumed: "Mercado reanudado.", toastFunds: "¡Fondos insuficientes!",
+                toastGoal: "⚽ ¡GOL! ¡Mercado Suspendido!", toastEnd: "🏁 ¡Final del partido!", strClickBack: "Clic para Comprar", strClickLay: "Clic para Vender", toastRestart: "¡Partido y Saldo Reiniciados!"
+            },
+            pt: {
+                appTitle: "ZERO TO HERO ACADEMY", lblBalance: "Saldo Disponível", lblStatus: "Status", lblPnl: "PnL Aberto",
+                noOrder: "Sem ordem", lblPos: "Pos", lblBack: "A FAVOR", lblBackSub: "(Comprar)", lblOdds: "Odd", lblLay: "CONTRA", lblLaySub: "(Vender)",
+                btnPause: "Pausar", btnResume: "Retomar", lblSpeedPre: "Velocidade:", spdNormal: "Normal", spdFast: "Rápida", spdSlow: "Lenta",
+                lblStakeTitle: "% da Banca", lblStake1: "1%", lblStake2: "2%", lblMatch: "Mercado U2.5", lblGoal: "Gol",
+                lblSuspended: "SUSPENSO", lblSuspendedSub: "Mercado pausado devido a um Gol...",
+                
+                tutTitle: "Academy: Tick & Ladder",
+                tutDemoTitle: "⏱️ Demo 90 Min. Acelerada",
+                tutDemoDesc: "Simulação acelerada de 90 min (Under 2.5). As odds caem com o tempo. Se houver um Gol, o mercado suspende e as odds sobem! O stake adapta-se à sua banca em tempo real.",
+                tutLadderTitle: "🪜 A Escada (Ladder)",
+                tutLadderDesc: "A <b>Escada</b> mostra as odds verticalmente. Permite ver a profundidade do mercado e operar rapidamente nos melhores preços.",
+                tutTickTitle: "📏 O Tick",
+                tutTickDesc: "Um <b>Tick</b> é o movimento mínimo de uma odd (ex: de 2.50 para 2.52). Seu objetivo é capturar Ticks positivos. <br><i>Nota: O mercado suspende se houver um Gol!</i>",
+                tutBackTitle: "A FAVOR (Comprar)", tutBackDesc: "Lucra se a odd <b>CAIR</b>. Ex: A Favor a 2.50, fecha (Contra) a 2.48 = <b>+1 Tick de lucro</b>.",
+                tutLayTitle: "CONTRA (Vender)", tutLayDesc: "Lucra se a odd <b>SUBIR</b>. Ex: Contra a 2.50, fecha (A Favor) a 2.52 = <b>+1 Tick de lucro</b>.",
+                btnReset: "Reiniciar Partida (Reset)",
+                
+                toastBuy: "A FAVOR Aberto @", toastSell: "CONTRA Aberto @", toastWarn: "Feche a posição atual primeiro!", toastWin: "Trade Ganho!", toastLose: "Trade Perdido", toastDraw: "Zero a zero", toastPaused: "Mercado pausado.", toastResumed: "Mercado retomado.", toastFunds: "Fundos insuficientes!",
+                toastGoal: "⚽ GOL! Mercado Suspenso!", toastEnd: "🏁 Fim de Jogo!", strClickBack: "Clique p/ Comprar", strClickLay: "Clique p/ Vender", toastRestart: "Partida e Saldo Reiniciados!"
+            },
+            it: {
+                appTitle: "ZERO TO HERO ACADEMY", lblBalance: "Saldo Disponibile", lblStatus: "Stato Ordine", lblPnl: "PnL Aperto",
+                noOrder: "Nessun ordine", lblPos: "Pos", lblBack: "PUNTA", lblBackSub: "(Compra)", lblOdds: "Quota", lblLay: "BANCA", lblLaySub: "(Vendi)",
+                btnPause: "Pausa", btnResume: "Riprendi", lblSpeedPre: "Velocità:", spdNormal: "Normale", spdFast: "Veloce", spdSlow: "Lenta",
+                lblStakeTitle: "% della Cassa", lblStake1: "1%", lblStake2: "2%", lblMatch: "Mercado U2.5", lblGoal: "Goal",
+                lblSuspended: "SOSPESO", lblSuspendedSub: "Mercato in pausa per Goal...",
+                
+                tutTitle: "Academy: Tick & Ladder",
+                tutDemoTitle: "⏱️ Demo 90 Min. Accelerata",
+                tutDemoDesc: "Questa è una simulazione accelerata di 90 min (Under 2.5). Le quote scendono col tempo. Se c'è un Gol, il mercato si sospende e le quote schizzano in alto! Lo stake si adatta alla tua cassa.",
+                tutLadderTitle: "🪜 Il Ladder (Scala)",
+                tutLadderDesc: "Il <b>Ladder</b> ordina le quote in verticale. Permette ai trader di visualizzare la profondità del mercato e piazzare ordini fulminei sui prezzi migliori.",
+                tutTickTitle: "📏 Il Tick",
+                tutTickDesc: "Un <b>Tick</b> è lo spostamento minimo di una quota (es. da 2.50 a 2.52). Il tuo obiettivo è catturare Tick positivi. <br><i>Nota: Il mercato si sospende al verificarsi di un Goal!</i>",
+                tutBackTitle: "PUNTA (Compra)", tutBackDesc: "Guadagni se la quota <b>SCENDE</b>. Es: Punti a 2.50, chiudi (Banchi) a 2.48 = <b>+1 Tick di profitto</b>.",
+                tutLayTitle: "BANCA (Vendi)", tutLayDesc: "Guadagni se la quota <b>SALE</b>. Es: Banchi a 2.50, chiudi (Punti) a 2.52 = <b>+1 Tick di profitto</b>.",
+                btnReset: "Ricomincia Partita (Reset)",
+                
+                toastBuy: "PUNTA Aperto @", toastSell: "BANCA Aperto @", toastWarn: "Chiudi prima la posizione attuale!", toastWin: "Trade Vinto!", toastLose: "Trade Perso", toastDraw: "Pareggio", toastPaused: "Mercato in pausa.", toastResumed: "Mercato riaperto.", toastFunds: "Fondi insufficienti per la responsabilità!",
+                toastGoal: "⚽ GOAL! Mercato Sospeso!", toastEnd: "🏁 Fine Partita!", strClickBack: "Clicca per Puntare", strClickLay: "Clicca per Bancare", toastRestart: "Partita e Cassa riavviati!"
+            }
+        };
+
+        let currentLang = 'en'; 
+        let stakePercentage = 0.01; 
+
+        const t = (key) => i18n[currentLang][key];
+
+        // Rilevamento automatico lingua
+        function getDeviceLanguage() {
+            const userLang = navigator.language || navigator.userLanguage;
+            const shortLang = userLang.substring(0, 2).toLowerCase();
+            return ['en', 'es', 'pt', 'it'].includes(shortLang) ? shortLang : 'en';
+        }
+
+        function setLang(lang) {
+            currentLang = lang;
+            ['en', 'es', 'pt', 'it'].forEach(l => { document.getElementById(`flag-${l}`).classList.remove('active'); });
+            document.getElementById(`flag-${lang}`).classList.add('active');
+
+            const updateId = (id, key) => { if(document.getElementById(id)) document.getElementById(id).innerHTML = t(key); };
+            
+            updateId('app-title', 'appTitle'); updateId('lbl-balance', 'lblBalance'); updateId('lbl-status', 'lblStatus'); 
+            updateId('lbl-pnl', 'lblPnl'); updateId('lbl-pos', 'lblPos'); updateId('lbl-back', 'lblBack'); 
+            updateId('lbl-back-sub', 'lblBackSub'); updateId('lbl-odds', 'lblOdds'); updateId('lbl-lay', 'lblLay'); 
+            updateId('lbl-lay-sub', 'lblLaySub'); updateId('lbl-btn-pause', isMarketPaused ? 'btnResume' : 'btnPause');
+            updateId('lbl-speed-pre', 'lblSpeedPre'); updateId('lbl-stake-title', 'lblStakeTitle');
+            updateId('lbl-match', 'lblMatch'); updateId('lbl-goal', 'lblGoal');
+            updateId('lbl-suspended', 'lblSuspended'); updateId('lbl-suspended-sub', 'lblSuspendedSub');
+            
+            let speedText = marketSpeed === 600 ? t('spdFast') : (marketSpeed === 2000 ? t('spdSlow') : t('spdNormal'));
+            document.getElementById('lbl-speed-val').innerText = speedText;
+
+            updateId('tut-title', 'tutTitle'); updateId('tut-ladder-title', 'tutLadderTitle'); updateId('tut-ladder-desc', 'tutLadderDesc');
+            updateId('tut-demo-title', 'tutDemoTitle'); updateId('tut-demo-desc', 'tutDemoDesc');
+            updateId('tut-tick-title', 'tutTickTitle'); updateId('tut-tick-desc', 'tutTickDesc');
+            updateId('tut-back-title', 'tutBackTitle'); updateId('tut-back-desc', 'tutBackDesc'); 
+            updateId('tut-lay-title', 'tutLayTitle'); updateId('tut-lay-desc', 'tutLayDesc'); 
+            updateId('lbl-btn-reset', 'btnReset');
+
+            updateDashboard(); renderLadder();
+        }
+
+        function setStake(percent) {
+            stakePercentage = percent;
+            updateDashboard();
+        }
+
+        // --- SISTEMA E DATI ---
+        const ticks = [];
+        for(let i=1.01; i<2; i+=0.01) ticks.push(i.toFixed(2));
+        for(let i=2.00; i<3; i+=0.02) ticks.push(i.toFixed(2));
+        for(let i=3.00; i<=4.00; i+=0.05) ticks.push(i.toFixed(2));
+        for(let i=4.00; i<=6.00; i+=0.10) ticks.push(i.toFixed(2));
+
+        let totalBalance = 100.00; 
+        let availableBalance = 100.00; 
+        let currentTickIndex = ticks.indexOf("2.50"); 
+        let viewCenterIndex = currentTickIndex; 
+        
+        let position = null; 
+        let marketInterval; let isMarketPaused = false; let isMarketSuspended = false; let marketSpeed = 1200; 
+        let mockVolumes = Array(ticks.length).fill(0).map(() => Math.floor(Math.random() * 500) + 10);
+        
+        let matchMinute = 0; let matchGoals = 0;
+
+        function renderLadder() {
+            const container = document.getElementById('ladder-rows');
+            container.innerHTML = '';
+            
+            if (currentTickIndex > viewCenterIndex + 2) viewCenterIndex++;
+            if (currentTickIndex < viewCenterIndex - 2) viewCenterIndex--;
+
+            const isMobile = window.innerWidth < 768;
+            const rowsToShow = isMobile ? 3 : 4; // Riduco di 1 per garantire l'assenza di scroll su piccoli schermi
+
+            for (let i = viewCenterIndex - rowsToShow; i <= viewCenterIndex + rowsToShow; i++) {
+                if (i < 0 || i >= ticks.length) continue; 
+                const price = ticks[i];
+                let row = document.createElement('div');
+                row.className = 'ladder-row';
+
+                let posCell = '<div class="bg-empty cell"></div>';
+                if (position && position.index === i) {
+                    const posClass = position.type === 'BACK' ? 'back-pos' : 'lay-pos';
+                    const posLabel = position.type === 'BACK' ? 'P' : 'B';
+                    posCell = `<div class="cell"><div class="position-marker ${posClass}">
+                        <span class="pos-type">${posLabel}</span>
+                        <span class="pos-stake">${position.stake.toFixed(2)}€</span>
+                    </div></div>`;
+                }
+
+                let isBestBack = (i === currentTickIndex);
+                let isBestLay = (i === currentTickIndex + 1);
+
+                let backClass = isBestBack ? 'bg-back-inactive active-price-back' : 'bg-back-inactive';
+                let layClass = isBestLay ? 'bg-lay-inactive active-price-lay' : 'bg-lay-inactive';
+                
+                let volBack = mockVolumes[i] + (isBestBack ? 250 : 0);
+                let volLay = mockVolumes[i] + (isBestLay ? 250 : 0);
+
+                let strBack = t('strClickBack'); let strLay = t('strClickLay');
+                let backContent = isBestBack ? `<span class="text-[11px] md:text-sm">${volBack}€</span><span class="vol-text hidden md:block text-blue-100">${strBack}</span>` : `<span class="vol-text opacity-50">${volBack}€</span>`;
+                let layContent = isBestLay ? `<span class="text-[11px] md:text-sm">${volLay}€</span><span class="vol-text hidden md:block text-rose-100">${strLay}</span>` : `<span class="vol-text opacity-50">${volLay}€</span>`;
+                
+                let onClickBack = isBestBack ? `onclick="trade('BACK', ${i}, '${price}')"` : '';
+                let onClickLay = isBestLay ? `onclick="trade('LAY', ${i}, '${price}')"` : '';
+
+                row.innerHTML = `
+                    ${posCell}
+                    <div class="cell ${backClass} ${!isBestBack ? 'disabled-cell' : ''}" ${onClickBack}>${backContent}</div>
+                    <div class="cell bg-price">${price}</div>
+                    <div class="cell ${layClass} ${!isBestLay ? 'disabled-cell' : ''}" ${onClickLay}>${layContent}</div>
+                `;
+                container.appendChild(row);
+            }
+        }
+
+        function calculateGreenedPnl(openType, openPrice, closePrice, stake) {
+            let pnl = 0;
+            if (openType === 'BACK') {
+                let layStakeToGreenUp = (stake * openPrice) / closePrice;
+                pnl = layStakeToGreenUp - stake;
+            } else {
+                let backStakeToGreenUp = (stake * openPrice) / closePrice;
+                pnl = stake - backStakeToGreenUp;
+            }
+            return pnl;
+        }
+
+        function trade(type, index, price) {
+            if(isMarketSuspended) return; // Blocco totale trade se c'è Goal in corso
+            if(isMarketPaused) { showToast(t('toastPaused'), "warning"); return; }
+
+            if (!position) {
+                let calcStake = totalBalance * stakePercentage; 
+                let numericPrice = parseFloat(price);
+                let liability = type === 'BACK' ? calcStake : calcStake * (numericPrice - 1);
+                
+                if (availableBalance < liability) {
+                    showToast(t('toastFunds') + ` (${liability.toFixed(2)}€)`, "error");
+                    return;
+                }
+
+                availableBalance -= liability; 
+                position = { type, index, price: numericPrice, stake: calcStake, liability: liability };
+                
+                showToast(`${type === 'BACK' ? t('toastBuy') : t('toastSell')} ${price} (Liab: ${liability.toFixed(2)}€)`, "info");
+            
+            } else if (position.type === type) {
+                showToast(t('toastWarn'), "warning");
+            } else {
+                let closePrice = parseFloat(price);
+                let grossPnl = calculateGreenedPnl(position.type, position.price, closePrice, position.stake);
+                
+                let netPnl = grossPnl;
+                let commText = "";
+                
+                if (grossPnl > 0) {
+                    let commission = grossPnl * 0.05;
+                    netPnl = grossPnl - commission;
+                    commText = ` (-${commission.toFixed(2)}€ Comm)`;
+                }
+
+                totalBalance += netPnl; 
+                availableBalance = totalBalance; 
+                
+                if (netPnl > 0) { showToast(`${t('toastWin')} +${netPnl.toFixed(2)}€${commText}`, "success"); flashBalance('green'); } 
+                else if (netPnl < 0) { showToast(`${t('toastLose')} ${netPnl.toFixed(2)}€`, "error"); flashBalance('red'); } 
+                else { showToast(t('toastDraw'), "info"); }
+                
+                position = null; 
+            }
+            renderLadder(); updateDashboard();
+        }
+
+        function updateDashboard() {
+            document.getElementById('balance').innerText = availableBalance.toFixed(2) + '€';
+            
+            // Aggiorna Mostra Stake in tempo reale
+            let currentCalculatedStake = totalBalance * stakePercentage;
+            document.getElementById('lbl-current-stake').innerText = "€ " + currentCalculatedStake.toFixed(2);
+
+            let btn1 = document.getElementById('btn-stake-1'); let btn2 = document.getElementById('btn-stake-2');
+
+            btn1.innerText = t('lblStake1');
+            btn2.innerText = t('lblStake2');
+
+            let unselectedClass = "flex-1 py-1.5 bg-gray-50 text-gray-500 border border-gray-200 rounded text-[10px] md:text-[11px] font-bold shadow-sm opacity-80 hover:bg-gray-100 cursor-pointer";
+            let selectedClass = "flex-1 py-1.5 bg-blue-100 text-blue-800 border-2 border-blue-400 rounded text-[10px] md:text-[11px] font-black shadow-md scale-[1.02] transition-transform";
+
+            if(stakePercentage === 0.01) { btn1.className = selectedClass; btn2.className = unselectedClass; } 
+            else { btn2.className = selectedClass; btn1.className = unselectedClass; }
+            
+            let posInfoEl = document.getElementById('pos-info'); let pnlInfoEl = document.getElementById('pnl-info'); let liabInfoEl = document.getElementById('liab-info');
+
+            if (!position) {
+                posInfoEl.innerHTML = t('noOrder'); posInfoEl.className = "text-[11px] md:text-xs font-bold text-gray-500 text-center";
+                pnlInfoEl.innerText = "0.00€"; pnlInfoEl.className = "text-lg md:text-xl font-black text-gray-400 tracking-tight leading-none";
+                liabInfoEl.classList.add('hidden');
+            } else {
+                const typeText = position.type === 'BACK' ? t('lblBack') : t('lblLay');
+                const colorClass = position.type === 'BACK' ? 'text-blue-600' : 'text-rose-600';
+                posInfoEl.innerHTML = `<span class="${colorClass}">${typeText}</span> @ ${position.price.toFixed(2)}`;
+                posInfoEl.className = "text-[11px] md:text-xs font-black bg-white border border-gray-200 shadow-sm py-0.5 px-1.5 rounded text-center";
+                
+                liabInfoEl.innerText = `Liab: -${position.liability.toFixed(2)}€`; liabInfoEl.classList.remove('hidden');
+
+                let virtualClosePrice = parseFloat(position.type === 'BACK' ? ticks[currentTickIndex + 1] : ticks[currentTickIndex]);
+                let virtualGrossPnl = calculateGreenedPnl(position.type, position.price, virtualClosePrice, position.stake);
+                let virtualNetPnl = virtualGrossPnl > 0 ? virtualGrossPnl * 0.95 : virtualGrossPnl;
+                
+                pnlInfoEl.innerText = (virtualNetPnl > 0 ? '+' : '') + virtualNetPnl.toFixed(2) + '€';
+                pnlInfoEl.className = "text-lg md:text-xl font-black tracking-tight leading-none " + (virtualNetPnl > 0 ? "text-green-600" : (virtualNetPnl < 0 ? "text-red-600" : "text-gray-800"));
+            }
+
+            document.getElementById('match-time').innerText = Math.floor(matchMinute);
+            document.getElementById('match-goals').innerText = matchGoals;
+        }
+
+        // LOGICA GOAL E MERCATO SOSPESO
+        function triggerGoal() {
+            isMarketSuspended = true;
+            matchGoals++;
+            document.getElementById('match-goals').innerText = matchGoals;
+            document.getElementById('suspended-overlay').classList.remove('hidden');
+            document.getElementById('suspended-overlay').classList.add('flex');
+            
+            showToast(t('toastGoal') + " (" + matchGoals + " " + t('lblGoal') + ")", 'error');
+
+            // Il mercato resta sospeso per 3.5 secondi reali (per far capire all'utente cosa succede)
+            setTimeout(() => {
+                let jumpTicks = 30 + (matchGoals * 15); 
+                currentTickIndex = Math.min(ticks.length - 5, currentTickIndex + jumpTicks);
+                
+                isMarketSuspended = false;
+                document.getElementById('suspended-overlay').classList.add('hidden');
+                document.getElementById('suspended-overlay').classList.remove('flex');
+                
+                showToast(t('toastResumed'), 'info');
+                renderLadder(); updateDashboard();
+            }, 3500);
+        }
+
+        function startMarket() {
+            if(marketInterval) clearInterval(marketInterval);
+            marketInterval = setInterval(() => {
+                if (isMarketPaused || isMarketSuspended) return;
+                
+                matchMinute += 0.5;
+                if (matchMinute > 90) {
+                     isMarketPaused = true; showToast(t('toastEnd'), 'info');
+                     document.getElementById('lbl-btn-pause').innerText = t('btnResume'); return;
+                }
+
+                // 1.5% probabilità di goal ad ogni aggiornamento
+                if (matchGoals < 3 && Math.random() < 0.015) {
+                    triggerGoal();
+                } else {
+                    let rand = Math.random();
+                    let move = rand < 0.55 ? -1 : (rand > 0.85 ? 1 : 0);
+                    if (currentTickIndex + move > 5 && currentTickIndex + move < ticks.length - 5) { currentTickIndex += move; }
+                }
+                
+                if(Math.random() > 0.5) mockVolumes[currentTickIndex] = Math.max(10, mockVolumes[currentTickIndex] + Math.floor(Math.random() * 20) - 10);
+                
+                if(!isMarketSuspended) { renderLadder(); updateDashboard(); }
+            }, marketSpeed);
+        }
+
+        function toggleMarket() {
+            if(isMarketSuspended) return;
+            isMarketPaused = !isMarketPaused;
+            const btn = document.getElementById('btn-pause'); const lbl = document.getElementById('lbl-btn-pause');
+            if(isMarketPaused) {
+                lbl.innerText = t('btnResume');
+                btn.classList.replace('bg-yellow-500', 'bg-green-500'); btn.classList.replace('hover:bg-yellow-400', 'hover:bg-green-400'); btn.classList.replace('border-yellow-600', 'border-green-600');
+            } else {
+                lbl.innerText = t('btnPause');
+                btn.classList.replace('bg-green-500', 'bg-yellow-500'); btn.classList.replace('hover:bg-green-400', 'hover:bg-yellow-400'); btn.classList.replace('border-green-600', 'border-yellow-600');
+            }
+        }
+
+        function changeSpeed() {
+            const label = document.getElementById('lbl-speed-val');
+            if(marketSpeed === 1200) { marketSpeed = 600; label.innerText = t('spdFast'); } 
+            else if (marketSpeed === 600) { marketSpeed = 2000; label.innerText = t('spdSlow'); } 
+            else { marketSpeed = 1200; label.innerText = t('spdNormal'); }
+            startMarket();
+        }
+
+        function resetGame() {
+            totalBalance = 100.00; availableBalance = 100.00; 
+            position = null; currentTickIndex = ticks.indexOf("2.50"); viewCenterIndex = currentTickIndex;
+            matchMinute = 0; matchGoals = 0;
+            isMarketPaused = false; isMarketSuspended = false;
+            document.getElementById('suspended-overlay').classList.add('hidden'); document.getElementById('suspended-overlay').classList.remove('flex');
+            
+            // reset bottoni
+            document.getElementById('lbl-btn-pause').innerText = t('btnPause');
+            const btnP = document.getElementById('btn-pause');
+            if(btnP.classList.contains('bg-green-500')) {
+                btnP.classList.replace('bg-green-500', 'bg-yellow-500'); btnP.classList.replace('hover:bg-green-400', 'hover:bg-yellow-400'); btnP.classList.replace('border-green-600', 'border-yellow-600');
+            }
+            showToast(t('toastRestart'), 'success');
+            updateDashboard(); renderLadder();
+        }
+
+        function flashBalance(color) {
+            const el = document.getElementById('balance');
+            el.style.color = color === 'green' ? '#16a34a' : '#dc2626';
+            el.style.transform = "scale(1.05)";
+            setTimeout(() => { el.style.color = '#111827'; el.style.transform = "scale(1)"; }, 400);
+        }
+
+        function showToast(message, type) {
+            const container = document.getElementById('toast-container'); const toast = document.createElement('div');
+            let bgClass = type === 'success' ? "bg-green-100 border-green-500 text-green-900" : 
+                          (type === 'error' ? "bg-red-900 border-red-500 text-white" : 
+                          (type === 'warning' ? "bg-yellow-100 border-yellow-500 text-yellow-900" : 
+                          "bg-gray-800 border-gray-900 text-white"));
+            toast.className = `toast px-4 py-3 rounded shadow-xl border-l-4 ${bgClass} text-xs md:text-sm font-bold flex items-center w-full`;
+            toast.innerHTML = message; container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-20px)'; toast.style.transition = 'all 0.3s ease-in'; setTimeout(() => toast.remove(), 300); }, 3500);
+        }
+
+        // Init App (Auto-rileva lingua e parte)
+        setLang(getDeviceLanguage());
+        startMarket();
+        window.addEventListener('resize', renderLadder);
+    </script>
+</body>
+</html>
